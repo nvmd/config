@@ -1,0 +1,123 @@
+#!/bin/bash
+
+COLOR_PREFIX="\[\e["
+COLOR_POSTFIX="m\]"
+NO_COLOR=$COLOR_PREFIX"0"$COLOR_POSTFIX
+DEFAULT_COLOR=$NO_COLOR
+
+function cfc()	#color for color code
+{
+	echo $COLOR_PREFIX$1$COLOR_POSTFIX
+}
+
+function colorize()
+{
+	echo $2$1$DEFAULT_COLOR
+}
+
+function generate_prompt()
+{
+	LIGHT_RED_COLOR=`cfc "1;31"`
+	LIGHT_GREEN_COLOR=`cfc "1;32"`
+	RED_COLOR=`cfc "0;31"`
+	GREEN_COLOR=`cfc "0;32"`
+	YELLOW_COLOR=`cfc "1;33"`
+	WHITE_COLOR=`cfc "1;37"`
+	CYAN_COLOR=`cfc "0;36"`
+	BROWN_COLOR=`cfc "0;33"`
+
+	local USER_COLOR=$LIGHT_GREEN_COLOR
+	if [ $UID -eq 0 ]; then
+		if [ "$USER" == "$LOGNAME" ]; then
+			if [[ $SUDO_USER ]]; then
+				USER_COLOR=$RED_COLOR
+			else
+				USER_COLOR=$LIGHT_RED_COLOR
+			fi
+		else
+			USER_COLOR=$YELLOW_COLOR
+		fi
+	else
+		if [ $USER == $LOGNAME ]; then
+			USER_COLOR=$GREEN_COLOR
+		else
+			USER_COLOR=$BROWN_COLOR
+		fi
+	fi
+	
+	local AT_COLOR=$LIGHT_RED_COLOR
+	if [ -n $http_proxy ] ; then
+		#AT_COLOR=$LIGHT_GREEN_COLOR	#original
+		AT_COLOR=$GREEN_COLOR
+	else
+		AT_COLOR=$RED_COLOR
+	fi
+
+	local HOST_COLOR=$DEFAULT_COLOR
+	local SSH_FLAG=0
+	local TTY=`tty | awk -F/dev/ '{print $2}'`
+	if [[ $TTY ]]; then
+		local SESS_SRC=$(who | grep "$TTY "  | awk '{print $5}')
+	fi
+	if [[ $SSH_CLIENT ]] || [[ $SSH2_CLIENT ]]; then
+        	SSH_FLAG=1
+	fi
+	if [ $SSH_FLAG -eq 1 ]; then
+		HOST_COLOR=$CYAN_COLOR
+	elif [[ -n $SESS_SRC ]]; then
+	if [ "$SESS_SRC" == "(:0.0)" ]; then
+		HOST_COLOR=$GREEN_COLOR
+	else
+	    local parent_process=`cat /proc/${PPID}/cmdline`
+	    if [[ "$parent_process" == "in.rlogind*" ]]; then
+		HOST_COLOR=$BROWN_COLOR
+	    elif [[ "$parent_process" == "in.telnetd*" ]]; then
+		HOST_COLOR=$YELLOW_COLOR
+	    else
+		HOST_COLOR=$LIGHT_RED_COLOR
+	    fi
+	fi
+	elif [[ "$SESS_SRC" == "" ]]; then
+		HOST_COLOR=$GREEN_COLOR
+	else
+		HOST_COLOR=$RED_COLOR
+	fi
+	
+	local DIR=$PWD
+	local DIR_COLOR=$GREEN_COLOR
+	if [ -w $DIR ]; then
+		DIR_COLOR=$GREEN_COLOR
+		#echo "Writable"
+	else
+		DIR_COLOR=$RED_COLOR
+		#echo "Not writable"
+	fi
+	
+	#echo "USER_COLOR="$USER_COLOR
+	#echo "AT_COLOR="$AT_COLOR
+	#echo "HOST_COLOR="$HOST_COLOR
+	#echo "DIR_COLOR="$DIR_COLOR
+
+	local USER=`colorize "\u" $USER_COLOR`
+	local AT=`colorize "@" $AT_COLOR`
+	local HOST=`colorize "\h" $HOST_COLOR`
+	local DIR=`colorize "\w" $DIR_COLOR`
+	
+	echo "$USER$AT$HOST:$DIR\$ "
+	#export PS1="$USER$AT$HOST:$DIR\$ "
+}
+
+function gen_and_set()
+{
+	export PS1=`generate_prompt`
+	#generate_prompt
+}
+
+#export PS1=`generate_prompt`
+#export PROMPT_COMMAND="generate_prompt"
+export PS1=""
+export PROMPT_COMMAND="gen_and_set"
+
+#echo "New \$PS1 is: "$PS1
+#echo "New \$PROMPT_COMMAND is: "$PROMPT_COMMAND
+
