@@ -11,8 +11,12 @@ export PATH=$PATH:~/bin
 
 export LOCAL_HOME=/home/$USER
 export LH=$LOCAL_HOME
-alias cdh='cd $LOCAL_HOME'
-mkcd()
+function cdh()
+{
+	cd $LOCAL_HOME/$*
+}
+
+function mkcd()
 {
 	mkdir -p $1 && cd $1
 }
